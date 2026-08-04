@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "name": "North Star Seed Node",
+      "designation": "Nᵒᵣᵗʰ‑001",
+      "location": "Alaska",
+      "http": "https://northstar.soliton.registry",
+      "ws": "wss://northstar.soliton.registry:4001",
+      "codex": "Codex.Legis.Neurodata.v1",
+      "kernel": "Ił7",
+      "nds_certified": true,
+      "activated": "2025-12-23"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+cp ledger.json backups/ledger-$(date +%F).json

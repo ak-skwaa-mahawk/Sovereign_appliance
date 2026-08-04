@@ -1,0 +1,38 @@
+[Unit]
+Description=Soliton Registry - North Star Seed Node (Nᵒᵣᵗʰ-001)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/soliton-north-star-node
+ExecStart=/usr/bin/node /opt/soliton-north-star-node/dist/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+User=soliton
+Group=soliton
+
+# Resource limits (tune as needed)
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+
+sudo useradd -r -s /bin/false soliton
+sudo mkdir -p /opt/soliton-north-star-node
+sudo chown -R soliton:soliton /opt/soliton-north-star-node
+
+# copy repo
+sudo cp -r /path/to/Soliton-north-star-node/* /opt/soliton-north-star-node/
+cd /opt/soliton-north-star-node
+sudo -u soliton npm install
+sudo -u soliton npm run build
+
+# install service
+sudo cp systemd/soliton-northstar.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable soliton-northstar
+sudo systemctl start soliton-northstar
+
+sudo systemctl status soliton-northstar
+

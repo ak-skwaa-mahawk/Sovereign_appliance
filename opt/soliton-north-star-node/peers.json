@@ -1,0 +1,3 @@
+curl http://localhost:3001/ledger -o ledger-export-$(date -Iseconds).json
+
+0 3 * * * /usr/bin/curl -s http://localhost:3001/ledger > /var/backups/soliton/ledger-$(date -I).json

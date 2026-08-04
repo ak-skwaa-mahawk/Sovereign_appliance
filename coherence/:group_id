@@ -1,0 +1,15 @@
+{
+  "group_id": "mesh-group-001",
+  "node_count": 4,
+  "mean_theta": 0.923,
+  "mean_theta_degrees": "52.87",
+  "phase_variance": "0.0847",
+  "synchrony_index": "0.9219",
+  "status": "COLLECTIVE_COIL_ENGAGED",
+  "timestamp": 1703519423000
+}
+Status Levels:
+COLLECTIVE_COIL_ENGAGED: synchrony > 0.8 (highest coherence)
+HIGH_COHERENCE: synchrony > 0.6
+MODERATE_COHERENCE: synchrony > 0.4
+LOW_COHERENCE: synchrony ≤ 0.4

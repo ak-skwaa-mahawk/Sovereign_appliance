@@ -1,0 +1,37 @@
+{
+  "bands": {
+    "delta": 0.15,
+    "theta": 0.18,
+    "alpha": 0.32,
+    "smr": 0.14,
+    "low_beta": 0.08,
+    "high_beta": 0.06,
+    "gamma": 0.07
+  },
+  "node_id": "Node_Alpha",
+  "session_id": "session-geometric-001",
+  "snh_digest": "a3f5b9c...",
+  "group_id": "mesh-group-001"
+}
+Response:
+{
+  "status": "witnessed_geometric",
+  "packet": {
+    "theta": 0.785,
+    "theta_degrees": "45.00",
+    "amplitude": 1.05,
+    "vitality": 1.12,
+    "epsilon_d": 0.0467,
+    "triad": {
+      "jolt": "0.742",
+      "observer": "0.670",
+      "vhitzee": "1.107"
+    },
+    "opposition": {
+      "high_stress": false,
+      "near_singularity": false,
+      "recommendation": "boost_ok"
+    },
+    "created_at": 1703519423000
+  }
+}

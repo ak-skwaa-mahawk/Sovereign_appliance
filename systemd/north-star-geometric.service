@@ -1,0 +1,20 @@
+[Unit]
+Description=Soliton North Star Node (Geometric)
+After=network.target
+
+[Service]
+Type=simple
+User=soliton
+WorkingDirectory=/opt/soliton-north-star-node
+ExecStart=/usr/bin/node server-enhanced.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=PORT=4000
+
+# Logging
+StandardOutput=append:/var/log/north-star/output.log
+StandardError=append:/var/log/north-star/error.log
+
+[Install]
+WantedBy=multi-user.target

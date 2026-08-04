@@ -1,0 +1,10 @@
+{
+  "node_id": "Node_Alpha",
+  "state": {
+    "theta": 0.785,
+    "theta_degrees": "45.00",
+    "amplitude": 1.05,
+    "phase": 0.0,
+    "timestamp": 1703519423000
+  }
+}
