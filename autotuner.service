@@ -1,0 +1,25 @@
+[Unit]
+Description=Processor 1: 3-0-3 Dual-Rail Power Balancer & PID Auto-Tuner
+After=network.target local-fs.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/Sovereign-Estate
+ExecStart=/root/Sovereign-Estate/autotuner
+Restart=always
+RestartSec=2s
+
+# Standard Logging Setup
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=autotuner-proc1
+
+# Real-time Execution & Resource Limits
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=99
+LimitCORE=infinity
+
+[Install]
+WantedBy=multi-user.target
