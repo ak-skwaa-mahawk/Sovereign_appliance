@@ -1,1 +1,16 @@
-cp ledger.json backups/ledger-$(date +%F).json
+{
+  "epochs": [
+    {
+      "epoch": 1,
+      "status": "ANCHORED_LOCALLY",
+      "timestamp": 1787192199.5698187,
+      "batchId": "batch_sepolia_1787191956923_bc4d1210",
+      "merkleRoot": "13c5f3000bee8e4f6dca00b8c16fb69684f37e8e14f93d6b944caf69aa0dcb4e",
+      "leafHash": "0xbc4d12107228af48801288e58955e9e9626d49057a62c9268cbf57b5cd58ec04",
+      "txHash": "0x24113b9924fc2adf34032b32269e48ea06398ae9a7364e4b3a3cea77520de6eb",
+      "blockNumber": 6128492,
+      "mode": "SIMULATED_FALLBACK"
+    }
+  ],
+  "last_updated": 1787192199.5698216
+}

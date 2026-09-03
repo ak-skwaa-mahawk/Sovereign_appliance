@@ -29,3 +29,16 @@ tordial_backup/
 .env
 .env.local
 .git-credentials
+
+# Pipeline sensitive environments and credentials
+.xrpl_env
+.git-credentials
+.termux_authinfo
+*.log
+
+# On-chain telemetry settlement logs
+.manifold_xrpl_ledger.jsonl
+.manifold_settlements.csv
+.manifold_emitter.log
+.settlement_worker.log
+.udp_listener.log

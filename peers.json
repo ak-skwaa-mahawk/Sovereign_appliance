@@ -1,1 +1,14 @@
-cp ledger.json backups/ledger-$(date +%F).json
+{
+  "node_id": "TORDIAL-EDGE-01",
+  "listen_host": "0.0.0.0",
+  "listen_port": 8080,
+  "peers": [
+    {
+      "node_id": "TORDIAL-EDGE-02",
+      "api_endpoint": "http://100.113.13.48:8080",
+      "udp_endpoint": "100.113.13.48:9999",
+      "weight": 1.0,
+      "status": "ACTIVE"
+    }
+  ]
+}

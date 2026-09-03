@@ -338,7 +338,7 @@ class MeshNode:
             f, psd = signal.welch(ch_data, fs=self.fs, nperseg=nperseg)
             
             # Total power
-            total_power = np.trapz(psd, f)
+            total_power = getattr(np, "trapezoid", getattr(np, "trapz", None))(psd, f)
             
             if total_power <= 0:
                 continue
@@ -347,7 +347,7 @@ class MeshNode:
             for band, (low, high) in BANDS.items():
                 idx = np.where((f >= low) & (f <= high))[0]
                 if len(idx) > 0:
-                    band_power = np.trapz(psd[idx], f[idx]) / total_power
+                    band_power = getattr(np, "trapezoid", getattr(np, "trapz", None))(psd[idx], f[idx]) / total_power
                     band_power_dict[band] += band_power
         
         # Average across channels
@@ -402,7 +402,7 @@ class MeshNode:
         
         # Instability: high variance in recent vitality
         if len(self.vitality_history) >= 5:
-            instability = float(np.std(list(self.vitality_history)))
+            instability = float(np.nanstd(list(self.vitality_history)))
         else:
             instability = 0.0
         
@@ -450,11 +450,11 @@ class MeshNode:
         
         # Aggregate metrics
         metrics = VitalityMetrics(
-            vitality_mean=float(np.mean(all_vitalities)),
-            vitality_std=float(np.std(all_vitalities)),
-            epsilon_d_mean=float(np.mean(all_epsilons)),
-            epsilon_d_std=float(np.std(all_epsilons)),
-            instability_score=float(np.mean(all_instabilities))
+            vitality_mean=float(np.nanmean(all_vitalities)),
+            vitality_std=float(np.nanstd(all_vitalities)),
+            epsilon_d_mean=float(np.nanmean(all_epsilons)),
+            epsilon_d_std=float(np.nanstd(all_epsilons)),
+            instability_score=float(np.nanmean(all_instabilities))
         )
         
         # Time window
@@ -564,7 +564,7 @@ def run_single_node_demo():
     for cycle in range(5):
         result = node.process_update()
         
-        if result["status"] == "ok":
+        if "vitality" in result:
             print(f"Cycle {cycle + 1}:")
             print(f"  Vitality: {result['vitality']:.3f}")
             print(f"  Epsilon_d: {result['epsilon_d']:.5f}")
@@ -630,13 +630,13 @@ def run_multi_node_demo():
         
         for node in nodes:
             result = node.process_update()
-            if result["status"] == "ok":
+            if "vitality" in result:
                 vitalities.append(result["vitality"])
                 print(f"  {node.node_id}: V={result['vitality']:.3f} "
                       f"→ {result['opposition']['recommendation']}")
         
-        group_vitality = np.mean(vitalities)
-        group_coherence = 1.0 / (1.0 + np.std(vitalities))
+        group_vitality = np.nanmean(vitalities) if len(vitalities) > 0 and not np.all(np.isnan(vitalities)) else 1.0
+        group_coherence = 1.0 / (1.0 + np.nanstd(vitalities)) if len(vitalities) > 0 and not np.all(np.isnan(vitalities)) else 1.0
         
         print(f"  → Group Vitality: {group_vitality:.3f}")
         print(f"  → Group Coherence: {group_coherence:.3f}")
