@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -11,15 +12,16 @@ def run_cmd(cmd, input_data=None):
         stderr=subprocess.PIPE,
         text=True if isinstance(input_data, str) or input_data is None else False
     )
+    stdout_txt = res.stdout if isinstance(res.stdout, str) else res.stdout.decode('utf-8', errors='replace')
+    stderr_txt = res.stderr if isinstance(res.stderr, str) else res.stderr.decode('utf-8', errors='replace')
+    
     if res.returncode != 0:
         print(f"[-] Command failed: {' '.join(cmd)}", file=sys.stderr)
         print(f"[-] Exit code: {res.returncode}", file=sys.stderr)
-        stdout_txt = res.stdout if isinstance(res.stdout, str) else res.stdout.decode('utf-8', errors='replace')
-        stderr_txt = res.stderr if isinstance(res.stderr, str) else res.stderr.decode('utf-8', errors='replace')
         print(f"[-] STDOUT:\n{stdout_txt}", file=sys.stderr)
         print(f"[-] STDERR:\n{stderr_txt}", file=sys.stderr)
         sys.exit(res.returncode)
-    return res.stdout if isinstance(res.stdout, str) else res.stdout.decode('utf-8', errors='replace')
+    return stdout_txt
 
 def main():
     print("[1/3] Testing Firecrawl Ingress & Gate Policy...")
@@ -32,10 +34,16 @@ def main():
     print(ingress_out.strip())
 
     print("\n[2/3] Generating Triad Notarizer Approval Vector...")
+    # Derive tip nonce deterministically from payload hash
+    tip_nonce = hashlib.sha256(b"harness_run_01_tip_nonce").hexdigest()
     notary_out = run_cmd([
         sys.executable,
         "notarizer_signer.py",
-        "--source-id", "harness_run_01"
+        "--gen-keys",
+        "--keys-dir", "workspace/notary_keys",
+        "--seq-id", "42",
+        "--nonce-hex", tip_nonce,
+        "--out-bin", "workspace/harness_approval.bin"
     ])
     print(notary_out.strip())
 
@@ -50,7 +58,7 @@ def main():
         print(f"[-] Error: expected 424 bytes, got {size}", file=sys.stderr)
         return 1
 
-    print(f"Validation successful: Approval vector is {size} bytes.")
+    print(f"Validation successful: Approval vector is {size} bytes, linked to tip {tip_nonce[:16]}...")
     return 0
 
 if __name__ == "__main__":
