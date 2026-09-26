@@ -45,12 +45,16 @@ int main(void) {
     assert(verdict.decision == DECISION_ALLOW);
 
     /* Test 2: Side-effecting tool (WRITE) must demand QUORUM */
+    memset(&prop, 0, sizeof(prop)); /* Zero memory to guarantee clean padding */
+    prop.magic = SOVP_MAGIC;
+    prop.version = SOVP_VERSION;
     prop.tool_id = TOOL_WRITE_FILE;
     prop.sequence_id = 2;
     prop.arg_len = 8;
     memcpy(prop.args, "testdata", 8);
 
     toolgate_handle_proposal(&prop, &verdict);
+    assert(verdict.magic == SOVV_MAGIC);
     assert(verdict.status_code == SOVR_STATUS_PENDING_APPROVAL);
     assert(verdict.decision == DECISION_QUORUM);
     assert(verdict.required_mask == QUORUM_MASK_TRIAD_DEFAULT);
@@ -62,9 +66,14 @@ int main(void) {
     assert(verdict.decision == DECISION_DENY);
 
     /* Test 4: Dirty padding rejection (covert channel / malleability guard) */
+    memset(&prop, 0, sizeof(prop));
+    prop.magic = SOVP_MAGIC;
+    prop.version = SOVP_VERSION;
+    prop.tool_id = TOOL_WRITE_FILE;
     prop.sequence_id = 3;
     prop.arg_len = 4;
-    prop.args[10] = 0xFF; /* Non-zero byte in padding region */
+    memcpy(prop.args, "test", 4);
+    prop.args[10] = 0xFF; /* Intentional dirty byte in padding region */
     toolgate_handle_proposal(&prop, &verdict);
     assert(verdict.status_code == SOVR_STATUS_ERR_CANONICAL);
     assert(verdict.decision == DECISION_DENY);
