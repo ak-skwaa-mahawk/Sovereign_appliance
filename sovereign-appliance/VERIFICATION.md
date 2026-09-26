@@ -100,3 +100,41 @@ poweroff -f
 ​Path Traversal Protection: Any command targeting directories outside /appliance/workspace or declared in admission_gate.toml is rejected with Blocked.
 ​Command Whitelisting: Binaries such as rm, dd, chmod, and chown trigger immediate denial before spawning subprocesses.
 ​Quorum Strictness: The CAmkES dataport monitor rejects approval payloads if fewer than 3 valid Ed25519 signatures are populated under the 0x07 bitmask.
+
+---
+
+## 6. Automated Headless Verification & CAmkES Reader
+
+### 6.1 Running the Non-Interactive QEMU Smoke Test
+
+The automated runner executes the full ingress, policy check, and quorum signing sequence in a headless QEMU instance via the `smoke` kernel parameter, evaluating pass/fail status and powering off automatically:
+
+```bash
+./test_appliance_smoke.sh
+Expected terminal output:
+text
+=== [1/2] Launching Deterministic QEMU Smoke Runner ===
+=== [2/2] Evaluating Test Assertions ===
+[+] SUCCESS: Guest integration harness executed with exit code 0.
+[+] Verified 424-byte CAmkES dataport approval vector generation.
+
+6.2 Inspecting the Dataport Approval Binary
+​Use gate_dataport_reader to parse and assert the 424-byte struct layout directly from the filesystem or memory-mapped dataport buffer:
+bash
+clang -Wall -Wextra -O2 gate_dataport_reader.c -o gate_dataport_reader
+./gate_dataport_reader ./workspace/harness_approval.bin
+
+Expected output:
+
+text
+=== CAmkES Dataport Approval Inspection (Offset 0x0400) ===
+  Sequence ID  : 42
+  Witness Mask : 0x07
+  Quorum Status: Verified (Triad quorum 0x07 satisfied)
+  Challenge Nonce (32B): <32-byte hex tip>
+  Signature [0] : Valid (64 bytes populated)
+  Signature [1] : Valid (64 bytes populated)
+  Signature [2] : Valid (64 bytes populated)
+  Total Populated Signatures: 3
+[+] CAmkES dataport approval vector layout is structurally valid.
+
