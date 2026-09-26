@@ -1,37 +1,69 @@
 import <std_connector.camkes>;
+import <interfaces/ToolExecRPC.idl4>;
 
-/* Privileged component holding storage and external networking */
+/* Privileged backend holding raw capabilities */
 component ToolExecutor {
     provides ToolExecRPC exec;
 }
 
-/* Formal admission gate component */
+/* Formal admission gate */
 component ToolGate {
-    /* 4KB shared memory dataport with the untrusted Linux VM */
     dataport Buf(4096) guest_buf;
-
-    /* Guest -> Gate doorbell */
     consumes ProposalReady proposal_ready;
-
-    /* Gate -> Guest notification */
     emits VerdictReady verdict_ready;
-
-    /* Privileged RPC: only the Gate holds this capability */
     uses ToolExecRPC exec;
+}
+
+/* seL4 ARM Virtual Machine Monitor */
+component VMM {
+    dataport Buf(4096) guest_gate_buf;
+    emits ProposalReady guest_proposal_ready;
+    consumes VerdictReady guest_verdict_ready;
+    include <vmm/vmm.h>;
 }
 
 assembly {
     composition {
+        component VMM vmm;
         component ToolGate gate;
         component ToolExecutor executor;
 
-        /* Capability-restricted connection between Gate and Executor */
-        connection seL4RPCCall gate_to_exec(from gate.exec, to executor.exec);
+        /* Shared 4KB Dataport between Linux VM and native seL4 Gate */
+        connection seL4SharedData shm(
+            from vmm.guest_gate_buf,
+            to gate.guest_buf
+        );
+
+        /* Guest -> Gate signal */
+        connection seL4Notification notify_prop(
+            from vmm.guest_proposal_ready,
+            to gate.proposal_ready
+        );
+
+        /* Gate -> Guest verdict/result notification */
+        connection seL4Notification notify_verdict(
+            from gate.verdict_ready,
+            to vmm.guest_verdict_ready
+        );
+
+        /* Gate -> Privileged Executor RPC */
+        connection seL4RPCCall rpc_exec(
+            from gate.exec,
+            to executor.exec
+        );
     }
 
     configuration {
-        /* Assign deterministic priority to admission gate */
+        /* Priority isolation */
         gate.priority = 200;
         executor.priority = 190;
+        vmm.priority = 100;
+
+        /* Map dataport into the guest VM physical memory map at 0x48000000 */
+        vmm.guest_gate_buf_paddr = 0x48000000;
+        vmm.guest_gate_buf_size  = 0x1000;
+
+        /* Assign GIC SPI IRQ line for verdict delivery */
+        vmm.guest_verdict_ready_irq = 100; /* GIC SPI 68 (100 - 32) */
     }
 }
