@@ -14,7 +14,7 @@ def run_cmd(cmd, input_data=None):
     )
     stdout_txt = res.stdout if isinstance(res.stdout, str) else res.stdout.decode('utf-8', errors='replace')
     stderr_txt = res.stderr if isinstance(res.stderr, str) else res.stderr.decode('utf-8', errors='replace')
-    
+
     if res.returncode != 0:
         print(f"[-] Command failed: {' '.join(cmd)}", file=sys.stderr)
         print(f"[-] Exit code: {res.returncode}", file=sys.stderr)
@@ -34,13 +34,24 @@ def main():
     print(ingress_out.strip())
 
     print("\n[2/3] Generating Triad Notarizer Approval Vector...")
-    # Derive tip nonce deterministically from payload hash
     tip_nonce = hashlib.sha256(b"harness_run_01_tip_nonce").hexdigest()
+    keys_dir = Path("workspace/notary_keys")
+    keys_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Initialize keys if not already present
+    if not (keys_dir / "notary_signer_0.key").exists():
+        run_cmd([
+            sys.executable,
+            "notarizer_signer.py",
+            "--gen-keys",
+            "--keys-dir", str(keys_dir)
+        ])
+
+    # 2. Sign approval binary
     notary_out = run_cmd([
         sys.executable,
         "notarizer_signer.py",
-        "--gen-keys",
-        "--keys-dir", "workspace/notary_keys",
+        "--keys-dir", str(keys_dir),
         "--seq-id", "42",
         "--nonce-hex", tip_nonce,
         "--out-bin", "workspace/harness_approval.bin"
