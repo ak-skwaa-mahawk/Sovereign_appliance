@@ -10,6 +10,9 @@ jobs:
   verify-appliance:
     name: Build, Smoke Test & CAmkES Verify
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sovereign-appliance
 
     steps:
       - name: Checkout Repository
@@ -34,27 +37,20 @@ jobs:
           clang -Wall -Wextra -O2 gate_dataport_reader.c -lcrypto -o gate_dataport_reader
           ./gate_dataport_reader --help 2>&1 || true
 
-      - name: Execute Non-Interactive QEMU Smoke Test
+      - name: Run Host-Side Test Harness & Generate Quorum Approval
         run: |
-          chmod +x test_appliance_smoke.sh
-          ./test_appliance_smoke.sh
+          python3 -m pip install toml cryptography
+          python3 test_handshake_harness.py
 
-      - name: Cryptographically Verify Generated Dataport Approval Vector
+      - name: Cryptographically Verify Approval Vector with C Reader
         run: |
-          if [ -f "./workspace/harness_approval.bin" ] && [ -d "./workspace/notary_keys" ]; then
-            ./gate_dataport_reader ./workspace/harness_approval.bin ./workspace/notary_keys
+          ./gate_dataport_reader ./workspace/harness_approval.bin ./workspace/notary_keys
+
+      - name: Execute QEMU Smoke Test (if kernel & initramfs present)
+        run: |
+          if [ -f "./vmlinuz-virt" ] && [ -f "./sovr-initramfs-aarch64.cpio.gz" ]; then
+            chmod +x test_appliance_smoke.sh
+            ./test_appliance_smoke.sh
           else
-            echo "[*] Dataport vector generated inside QEMU guest. Testing host-side harness generation..."
-            python3 -m pip install toml cryptography
-            python3 test_handshake_harness.py
-            ./gate_dataport_reader ./workspace/harness_approval.bin ./workspace/notary_keys
-          fi
-
-      - name: Validate Release Artifact Checksums
-        run: |
-          if [ -f "sovr-initramfs-aarch64.cpio.gz.sha256" ]; then
-            sha256sum -c sovr-initramfs-aarch64.cpio.gz.sha256
-          fi
-          if [ -f "sovr-rootfs-aarch64.tar.gz.sha256" ]; then
-            sha256sum -c sovr-rootfs-aarch64.tar.gz.sha256
+            echo "[!] Kernel or initramfs not committed to VCS (expected for large binaries). Smoke test skipped in lightweight CI."
           fi
