@@ -35,7 +35,7 @@ def main() -> int:
         nonce_hex = last_entry["entry_hash"][:64]
 
     approval = run_cmd([
-        sys.executable, "notarizer_signer.py",
+        (sys.executable or "python3"), "notarizer_signer.py",
         "--seq-id", "42",
         "--nonce-hex", nonce_hex,
         "--out-bin", "./workspace/harness_approval.bin"
