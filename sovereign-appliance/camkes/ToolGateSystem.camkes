@@ -1,0 +1,37 @@
+import <std_connector.camkes>;
+
+/* Privileged component holding storage and external networking */
+component ToolExecutor {
+    provides ToolExecRPC exec;
+}
+
+/* Formal admission gate component */
+component ToolGate {
+    /* 4KB shared memory dataport with the untrusted Linux VM */
+    dataport Buf(4096) guest_buf;
+
+    /* Guest -> Gate doorbell */
+    consumes ProposalReady proposal_ready;
+
+    /* Gate -> Guest notification */
+    emits VerdictReady verdict_ready;
+
+    /* Privileged RPC: only the Gate holds this capability */
+    uses ToolExecRPC exec;
+}
+
+assembly {
+    composition {
+        component ToolGate gate;
+        component ToolExecutor executor;
+
+        /* Capability-restricted connection between Gate and Executor */
+        connection seL4RPCCall gate_to_exec(from gate.exec, to executor.exec);
+    }
+
+    configuration {
+        /* Assign deterministic priority to admission gate */
+        gate.priority = 200;
+        executor.priority = 190;
+    }
+}
