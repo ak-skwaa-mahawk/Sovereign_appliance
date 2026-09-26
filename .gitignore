@@ -42,3 +42,5 @@ tordial_backup/
 .manifold_emitter.log
 .settlement_worker.log
 .udp_listener.log
+sovereign-appliance/audit_log.jsonl
+sovereign-appliance/workspace/
