@@ -22,7 +22,7 @@ def main() -> int:
     print("[1/3] Testing Firecrawl Ingress & Gate Policy...")
     payload = b'{"dataset": "soliton-mainnet", "state": "immutable"}'
     ingress = run_cmd(
-        [sys.executable, "firecrawl_ingress.py", "--source-id", "harness_run_01"],
+        [(sys.executable or "python3"), "firecrawl_ingress.py", "--source-id", "harness_run_01"],
         input_data=payload
     )
     print(ingress.stdout.decode().strip())
