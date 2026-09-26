@@ -17,7 +17,15 @@ if grep -q "smoke" /proc/cmdline 2>/dev/null; then
     ./test_handshake_harness.py
     STATUS=$?
     if [ $STATUS -eq 0 ]; then
-        echo "=== SMOKE_TEST_PASS ==="
+        if [ -x /appliance/gate_dataport_reader ]; then
+        echo "[4/4] Verifying Dataport Vector via In-Guest CAmkES Reader..."
+        /appliance/gate_dataport_reader /appliance/workspace/harness_approval.bin /appliance/workspace/notary_keys
+        if [ $? -ne 0 ]; then
+            echo "[-] In-guest CAmkES verification failed"
+            STATUS=1
+        fi
+    fi
+    echo "=== SMOKE_TEST_PASS ===" 
     else
         echo "=== SMOKE_TEST_FAIL ==="
     fi

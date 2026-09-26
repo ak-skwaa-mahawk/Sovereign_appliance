@@ -16,6 +16,14 @@ cd /appliance
 ./test_handshake_harness.py
 STATUS=$?
 
+if [ -x /appliance/gate_dataport_reader ]; then
+    echo "[4/4] Verifying Dataport Vector via In-Guest CAmkES Reader..."
+    /appliance/gate_dataport_reader /appliance/workspace/harness_approval.bin /appliance/workspace/notary_keys
+    if [ $? -ne 0 ]; then
+        STATUS=1
+    fi
+fi
+
 if [ $STATUS -eq 0 ]; then
     echo "=== SMOKE_TEST_PASS ==="
 else

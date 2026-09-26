@@ -25,7 +25,7 @@ cp packages.list "${ROOTFS_DIR}/tmp/"
 cp configure-system.sh "${ROOTFS_DIR}/tmp/"
 
 mkdir -p "${ROOTFS_DIR}/appliance"
-cp admission_gate.toml firecrawl_ingress.py notarizer_signer.py test_handshake_harness.py smoke_runner.sh "${ROOTFS_DIR}/appliance/"
+cp admission_gate.toml firecrawl_ingress.py notarizer_signer.py test_handshake_harness.py smoke_runner.sh gate_dataport_reader "${ROOTFS_DIR}/appliance/"
 chmod +x "${ROOTFS_DIR}"/appliance/*.py
 
 # Align default config search path for guest
