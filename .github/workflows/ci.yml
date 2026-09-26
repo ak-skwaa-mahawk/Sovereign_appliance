@@ -1,0 +1,60 @@
+name: Sovereign Appliance CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-appliance:
+    name: Build, Smoke Test & CAmkES Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-arm \
+            gcc \
+            clang \
+            libssl-dev \
+            python3 \
+            python3-pip \
+            python3-cryptography \
+            gzip \
+            cpio
+
+      - name: Compile CAmkES Dataport Reader
+        run: |
+          clang -Wall -Wextra -O2 gate_dataport_reader.c -lcrypto -o gate_dataport_reader
+          ./gate_dataport_reader --help 2>&1 || true
+
+      - name: Execute Non-Interactive QEMU Smoke Test
+        run: |
+          chmod +x test_appliance_smoke.sh
+          ./test_appliance_smoke.sh
+
+      - name: Cryptographically Verify Generated Dataport Approval Vector
+        run: |
+          if [ -f "./workspace/harness_approval.bin" ] && [ -d "./workspace/notary_keys" ]; then
+            ./gate_dataport_reader ./workspace/harness_approval.bin ./workspace/notary_keys
+          else
+            echo "[*] Dataport vector generated inside QEMU guest. Testing host-side harness generation..."
+            python3 -m pip install toml cryptography
+            python3 test_handshake_harness.py
+            ./gate_dataport_reader ./workspace/harness_approval.bin ./workspace/notary_keys
+          fi
+
+      - name: Validate Release Artifact Checksums
+        run: |
+          if [ -f "sovr-initramfs-aarch64.cpio.gz.sha256" ]; then
+            sha256sum -c sovr-initramfs-aarch64.cpio.gz.sha256
+          fi
+          if [ -f "sovr-rootfs-aarch64.tar.gz.sha256" ]; then
+            sha256sum -c sovr-rootfs-aarch64.tar.gz.sha256
+          fi
