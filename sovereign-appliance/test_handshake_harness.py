@@ -3,6 +3,7 @@ import hashlib
 import subprocess
 import sys
 from pathlib import Path
+from ingress_firewall import inspect_ingress
 
 def run_cmd(cmd, input_data=None):
     res = subprocess.run(
@@ -24,8 +25,14 @@ def run_cmd(cmd, input_data=None):
     return stdout_txt
 
 def main():
-    print("[1/3] Testing Firecrawl Ingress & Gate Policy...")
     mock_payload = b'{"url": "https://sovereign.local/audit", "content": "admission test telemetry", "depth": 1}'
+
+    # Ingress Security Firewall Pre-Flight Evaluation
+    if not inspect_ingress("CI Pre-Flight", mock_payload.decode("utf-8"), {"frame_size": 424, "seq_id_bits": 32}):
+        print("[-] Ingress firewall rejection: Payload or frame layout violation", file=sys.stderr)
+        return 1
+
+    print("[1/3] Testing Firecrawl Ingress & Gate Policy...")
     ingress_out = run_cmd([
         sys.executable,
         "firecrawl_ingress.py",
@@ -38,7 +45,6 @@ def main():
     keys_dir = Path("workspace/notary_keys")
     keys_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Initialize keys if not already present
     if not (keys_dir / "notary_signer_0.key").exists():
         run_cmd([
             sys.executable,
@@ -47,7 +53,6 @@ def main():
             "--keys-dir", str(keys_dir)
         ])
 
-    # 2. Sign approval binary
     notary_out = run_cmd([
         sys.executable,
         "notarizer_signer.py",
