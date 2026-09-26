@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
 
 #define DATAPORT_SIZE 4096
 #define APPROVAL_OFFSET 0x400
@@ -21,6 +23,34 @@ static void dump_hex(const uint8_t *data, size_t len) {
         printf("%02x", data[i]);
     }
     printf("\n");
+}
+
+/* Derives the standard deterministic public key for Triad signer i */
+static EVP_PKEY* derive_triad_public_key(int signer_index) {
+    char seed_str[64];
+    snprintf(seed_str, sizeof(seed_str), "triad-signer-seed-%d", signer_index);
+
+    /* SHA-256 seed derivation matching notarizer_signer.py */
+    uint8_t seed[32];
+    SHA256((const unsigned char *)seed_str, strlen(seed_str), seed);
+
+    EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, seed, 32);
+    return pkey;
+}
+
+static int verify_signature(EVP_PKEY *pkey, const uint8_t *data, size_t data_len, const uint8_t *sig, size_t sig_len) {
+    EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
+    if (!md_ctx) return 0;
+
+    int ret = 0;
+    if (EVP_DigestVerifyInit(md_ctx, NULL, NULL, NULL, pkey) == 1) {
+        if (EVP_DigestVerify(md_ctx, sig, sig_len, data, data_len) == 1) {
+            ret = 1;
+        }
+    }
+
+    EVP_MD_CTX_free(md_ctx);
+    return ret;
 }
 
 int main(int argc, char **argv) {
@@ -54,21 +84,29 @@ int main(int argc, char **argv) {
     printf("  Challenge Nonce (32B): ");
     dump_hex(approval.challenge_nonce, 32);
 
-    int sig_count = 0;
-    for (int i = 0; i < 6; ++i) {
-        uint8_t zero_buf[64] = {0};
-        if (memcmp(approval.signatures[i], zero_buf, 64) != 0) {
-            sig_count++;
-            printf("  Signature [%d] : Valid (64 bytes populated)\n", i);
+    int valid_sig_count = 0;
+    for (int i = 0; i < 3; ++i) {
+        EVP_PKEY *pkey = derive_triad_public_key(i);
+        if (!pkey) {
+            fprintf(stderr, "[-] Failed to derive public key for signer %d\n", i);
+            continue;
         }
+
+        if (verify_signature(pkey, approval.challenge_nonce, 32, approval.signatures[i], 64)) {
+            printf("  Signature [%d] : Cryptographically Verified (Ed25519 valid)\n", i);
+            valid_sig_count++;
+        } else {
+            fprintf(stderr, "[-] Signature [%d] : INVALID signature over challenge nonce\n", i);
+        }
+        EVP_PKEY_free(pkey);
     }
 
-    printf("  Total Populated Signatures: %d\n", sig_count);
-    if (sig_count < 3) {
-        fprintf(stderr, "[-] Incomplete signature vector: expected >= 3, found %d\n", sig_count);
+    printf("  Total Cryptographically Valid Signatures: %d/3\n", valid_sig_count);
+    if (valid_sig_count < 3) {
+        fprintf(stderr, "[-] Quorum verification failed: Valid signatures < 3\n");
         return 3;
     }
 
-    printf("[+] CAmkES dataport approval vector layout is structurally valid.\n");
+    printf("[+] CAmkES dataport approval vector cryptographically confirmed.\n");
     return 0;
 }
