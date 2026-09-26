@@ -59,21 +59,7 @@ proot \
 '
 
 # Create root /init entrypoint
-cat << 'INIT_EOF' > "${ROOTFS_DIR}/init"
-#!/bin/sh
-mount -t devtmpfs devtmpfs /dev
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-mount -t tmpfs tmpfs /tmp
-mkdir -p /dev/pts
-mount -t devpts devpts /dev/pts
-
-echo "=========================================="
-echo " Sovereign seL4 Appliance Shell Ready"
-echo "=========================================="
-
-exec /bin/sh
-INIT_EOF
+cp root_init.sh "${ROOTFS_DIR}/init"
 chmod +x "${ROOTFS_DIR}/init"
 
 echo "=== [4/5] Packing deterministic rootfs image ==="

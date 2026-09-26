@@ -11,3 +11,4 @@ audit_log.jsonl
 workspace/
 workspace/notary_keys/
 smoke_test.log
+gate_dataport_reader
