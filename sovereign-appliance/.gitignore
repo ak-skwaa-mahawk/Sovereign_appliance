@@ -1,0 +1,9 @@
+*.apk
+*.cpio.gz
+*.raw
+*.tar.gz
+check-init/
+initramfs-staging/
+initramfs-virt
+staging-rootfs/
+vmlinuz-virt
