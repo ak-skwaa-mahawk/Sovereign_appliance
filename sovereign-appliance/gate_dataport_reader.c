@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/evp.h>
-#include <openssl/sha.h>
 
 #define DATAPORT_SIZE 4096
 #define APPROVAL_OFFSET 0x400
@@ -25,26 +24,33 @@ static void dump_hex(const uint8_t *data, size_t len) {
     printf("\n");
 }
 
-/* Derives the standard deterministic public key for Triad signer i */
-static EVP_PKEY* derive_triad_public_key(int signer_index) {
-    char seed_str[64];
-    snprintf(seed_str, sizeof(seed_str), "triad-signer-seed-%d", signer_index);
+static EVP_PKEY* load_public_key(const char *keys_dir, int signer_idx) {
+    char path[256];
+    snprintf(path, sizeof(path), "%s/notary_signer_%d.pub", keys_dir, signer_idx);
 
-    /* SHA-256 seed derivation matching notarizer_signer.py */
-    uint8_t seed[32];
-    SHA256((const unsigned char *)seed_str, strlen(seed_str), seed);
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        return NULL;
+    }
 
-    EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, seed, 32);
-    return pkey;
+    uint8_t pub_bytes[32];
+    size_t read_bytes = fread(pub_bytes, 1, sizeof(pub_bytes), f);
+    fclose(f);
+
+    if (read_bytes != 32) {
+        return NULL;
+    }
+
+    return EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pub_bytes, 32);
 }
 
-static int verify_signature(EVP_PKEY *pkey, const uint8_t *data, size_t data_len, const uint8_t *sig, size_t sig_len) {
+static int verify_signature(EVP_PKEY *pkey, const uint8_t *msg, size_t msg_len, const uint8_t *sig, size_t sig_len) {
     EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
     if (!md_ctx) return 0;
 
     int ret = 0;
     if (EVP_DigestVerifyInit(md_ctx, NULL, NULL, NULL, pkey) == 1) {
-        if (EVP_DigestVerify(md_ctx, sig, sig_len, data, data_len) == 1) {
+        if (EVP_DigestVerify(md_ctx, sig, sig_len, msg, msg_len) == 1) {
             ret = 1;
         }
     }
@@ -55,6 +61,8 @@ static int verify_signature(EVP_PKEY *pkey, const uint8_t *data, size_t data_len
 
 int main(int argc, char **argv) {
     const char *bin_path = (argc > 1) ? argv[1] : "./workspace/harness_approval.bin";
+    const char *keys_dir = (argc > 2) ? argv[2] : "./workspace/notary_keys";
+
     FILE *f = fopen(bin_path, "rb");
     if (!f) {
         perror("[-] Failed to open approval binary");
@@ -84,26 +92,35 @@ int main(int argc, char **argv) {
     printf("  Challenge Nonce (32B): ");
     dump_hex(approval.challenge_nonce, 32);
 
+    /* Construct 36-byte sign_message: struct.pack('<I', seq_id) + challenge_nonce */
+    uint8_t sign_message[36];
+    uint32_t seq_le = approval.seq_id;
+    sign_message[0] = (uint8_t)(seq_le & 0xFF);
+    sign_message[1] = (uint8_t)((seq_le >> 8) & 0xFF);
+    sign_message[2] = (uint8_t)((seq_le >> 16) & 0xFF);
+    sign_message[3] = (uint8_t)((seq_le >> 24) & 0xFF);
+    memcpy(sign_message + 4, approval.challenge_nonce, 32);
+
     int valid_sig_count = 0;
     for (int i = 0; i < 3; ++i) {
-        EVP_PKEY *pkey = derive_triad_public_key(i);
+        EVP_PKEY *pkey = load_public_key(keys_dir, i);
         if (!pkey) {
-            fprintf(stderr, "[-] Failed to derive public key for signer %d\n", i);
+            fprintf(stderr, "[-] Could not load public key: %s/notary_signer_%d.pub\n", keys_dir, i);
             continue;
         }
 
-        if (verify_signature(pkey, approval.challenge_nonce, 32, approval.signatures[i], 64)) {
+        if (verify_signature(pkey, sign_message, sizeof(sign_message), approval.signatures[i], 64)) {
             printf("  Signature [%d] : Cryptographically Verified (Ed25519 valid)\n", i);
             valid_sig_count++;
         } else {
-            fprintf(stderr, "[-] Signature [%d] : INVALID signature over challenge nonce\n", i);
+            fprintf(stderr, "[-] Signature [%d] : INVALID signature over sign_message\n", i);
         }
         EVP_PKEY_free(pkey);
     }
 
     printf("  Total Cryptographically Valid Signatures: %d/3\n", valid_sig_count);
     if (valid_sig_count < 3) {
-        fprintf(stderr, "[-] Quorum verification failed: Valid signatures < 3\n");
+        fprintf(stderr, "[-] Quorum cryptographic verification failed: valid count < 3\n");
         return 3;
     }
 
