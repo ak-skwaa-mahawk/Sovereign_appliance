@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
 Firecrawl Ingress Pipeline for Sovereign Appliance Admission Gate.
+import os
+from pathlib import Path
+Path("workspace/firecrawl_data").mkdir(parents=True, exist_ok=True)
+Path("workspace/audit").mkdir(parents=True, exist_ok=True)
+Path("workspace/notary_keys").mkdir(parents=True, exist_ok=True)
+
 
 - Ingests raw external content (JSON, text, or stream).
 - Sanitizes and writes payload artifacts to the sandboxed workspace.

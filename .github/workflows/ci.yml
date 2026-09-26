@@ -50,6 +50,7 @@ jobs:
       - name: Run Host-Side Test Harness & Generate Quorum Approval
         working-directory: ${{ steps.locate.outputs.appliance_dir }}
         run: |
+          mkdir -p workspace/firecrawl_data workspace/audit workspace/notary_keys
           python3 test_handshake_harness.py
 
       - name: Cryptographically Verify Approval Vector with C Reader
