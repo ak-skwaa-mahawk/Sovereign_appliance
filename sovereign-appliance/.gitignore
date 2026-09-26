@@ -7,3 +7,5 @@ initramfs-staging/
 initramfs-virt
 staging-rootfs/
 vmlinuz-virt
+audit_log.jsonl
+workspace/
