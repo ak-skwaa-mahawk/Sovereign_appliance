@@ -44,3 +44,26 @@ tordial_backup/
 .udp_listener.log
 sovereign-appliance/audit_log.jsonl
 sovereign-appliance/workspace/
+# Loose state and telemetry dumps
+*.wav
+*.png
+*.json
+*.jsonl
+*.log
+!sovr_engine/ledger.jsonl
+!sovereign-appliance/**
+
+# Transient pipelines and harnesses
+run_*.py
+bench_*.py
+trajectory_*.py
+test_*.py
+!sovereign-appliance/**
+
+# Sandboxes and workspaces
+sandbox_workspace/
+seL4-workspace/
+storage/
+service/
+reports/
+downloads/
