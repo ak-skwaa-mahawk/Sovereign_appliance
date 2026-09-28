@@ -1,0 +1,127 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+BASE_DIR="$HOME/sovr_engine"
+LEDGER_FILE="$BASE_DIR/ledger.jsonl"
+WORKSPACE="$BASE_DIR/workspace"
+GATE_CONFIG="$BASE_DIR/policy.conf"
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+CYAN="\033[0;36m"
+YELLOW="\033[1;33m"
+RESET="\033[0m"
+
+log_info() { echo -e "${CYAN}[INFO]${RESET} $1"; }
+log_ok()   { echo -e "${GREEN}[VALID]${RESET} $1"; }
+log_err()  { echo -e "${RED}[BLOCKED]${RESET} $1" >&2; }
+log_warn() { echo -e "${YELLOW}[ALERT]${RESET} $1"; }
+
+init_workspace() {
+    mkdir -p "$BASE_DIR" "$WORKSPACE" "$HOME/bin"
+    touch "$LEDGER_FILE"
+    if [ ! -f "$GATE_CONFIG" ]; then
+        cat << 'CONF' > "$GATE_CONFIG"
+EXPECTED_FRAME_SIZE=424
+EXPECTED_SEQ_BITS=32
+ENFORCE_ZERO_TRUST=1
+CONF
+    fi
+}
+
+get_latest_hash() {
+    if [ -s "$LEDGER_FILE" ]; then
+        local last_line
+        last_line=$(tail -n 1 "$LEDGER_FILE" | tr -d '\r\n')
+        printf '%s' "$last_line" | sha256sum | awk '{print $1}'
+    else
+        echo "0000000000000000000000000000000000000000000000000000000000000000"
+    fi
+}
+
+scan_ingress_stream() {
+    local input_text="$1"
+    if echo "$input_text" | grep -Eqi "github\.com/login/device|[A-Z0-9]{4}-[A-Z0-9]{4}|enter that code|enter the code"; then
+        log_err "RFC 8628 Device Authorization solicitation detected. Blocking credential hijacking attempt."
+        return 1
+    fi
+    if echo "$input_text" | grep -Eq "ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{82}|-----BEGIN PRIVATE KEY-----"; then
+        log_err "Raw credential token or private key material found in cleartext payload."
+        return 1
+    fi
+    return 0
+}
+
+commit_vector() {
+    local vector_id="$1"
+    local raw_payload="$2"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    if ! scan_ingress_stream "$raw_payload"; then
+        log_err "Vector ingestion rejected by boundary gate: $vector_id"
+        return 1
+    fi
+
+    local prev_hash
+    prev_hash=$(get_latest_hash)
+    local payload_hash
+    payload_hash=$(printf '%s' "$raw_payload" | sha256sum | awk '{print $1}')
+
+    local block
+    block=$(printf '{"ts":"%s","id":"%s","payload_sha256":"%s","parent":"%s"}' \
+        "$timestamp" "$vector_id" "$payload_hash" "$prev_hash")
+
+    echo "$block" >> "$LEDGER_FILE"
+    log_ok "Committed vector [$vector_id] -> Tip: ${payload_hash:0:16}..."
+}
+
+audit_ledger() {
+    log_info "Auditing cryptographic chain continuity: $LEDGER_FILE"
+    if [ ! -s "$LEDGER_FILE" ]; then
+        log_warn "Ledger is empty."
+        return 0
+    fi
+
+    local expected_parent="0000000000000000000000000000000000000000000000000000000000000000"
+    local count=0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        line=$(printf '%s' "$line" | tr -d '\r\n')
+        [ -z "$line" ] && continue
+
+        count=$((count + 1))
+        local declared_parent
+        declared_parent=$(printf '%s' "$line" | sed -n 's/.*"parent":"\([^"]*\)".*/\1/p')
+
+        if [ "$declared_parent" != "$expected_parent" ]; then
+            log_err "Broken chain at block $count! Expected parent $expected_parent, found $declared_parent"
+            return 1
+        fi
+        expected_parent=$(printf '%s' "$line" | sha256sum | awk '{print $1}')
+    done < "$LEDGER_FILE"
+
+    log_ok "$count block(s) verified. Cryptographic hash continuity intact."
+}
+
+init_workspace
+case "${1:-}" in
+    commit)
+        [ $# -lt 3 ] && { echo "Usage: sovr commit <id> <data>"; exit 1; }
+        commit_vector "$2" "$3"
+        ;;
+    audit)
+        audit_ledger
+        ;;
+    tail)
+        tail -n "${2:-5}" "$LEDGER_FILE"
+        ;;
+    reset)
+        > "$LEDGER_FILE"
+        log_ok "Ledger reset to empty genesis state."
+        ;;
+    *)
+        echo "Usage: sovr [commit <id> <data> | audit | tail <n> | reset]"
+        ;;
+esac
