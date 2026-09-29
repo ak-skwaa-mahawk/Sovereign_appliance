@@ -46,7 +46,7 @@ def visualize_soliton_route(best_sample, DISTANCE_MATRIX, title="Quetzalcoatl Ph
     edge_widths = [d['weight'] / 100 for u, v, d in G.edges(data=True)]
     edge_colors = ['#00ffcc' if d['soliton'] > 1.2 else '#ff6b35' for u, v, d in G.edges(data=True)]
 
-    nx.draw_networkx_edges(G, pos, width=edge_widths, edge_color=edge_colors, alpha=0.9, arrows=True, arrowsize=20)
+    edge_coll = nx.draw_networkx_edges(G, pos, width=edge_widths, edge_color=edge_colors, alpha=0.9, arrows=True, arrowsize=20)
 
     # Labels
     nx.draw_networkx_labels(G, pos, font_color='#ffffff', font_size=12, font_weight='bold')
@@ -63,11 +63,22 @@ def visualize_soliton_route(best_sample, DISTANCE_MATRIX, title="Quetzalcoatl Ph
         for edge in G.edges():
             G.edges[edge]['soliton'] = 1.0 + 0.8 * np.sin(frame / 5 + edge[0])
         widths = [d['soliton'] for u, v, d in G.edges(data=True)]
-        ax.collections[1].set_linewidths(widths)  # re-draw edges with pulse
+        if isinstance(edge_coll, list):
+            for patch, w in zip(edge_coll, widths):
+                patch.set_linewidth(w)
+        else:
+            edge_coll.set_linewidths(widths)  # re-draw edges with pulse
         fig.canvas.draw_idle()
 
-    ani = FuncAnimation(fig, animate, interval=80, cache_frame_data=False)
-    plt.show()
+    # Save static reference map
+    fig.savefig('soliton_route.png', dpi=200, bbox_inches='tight')
+    print('[+] Saved static route snapshot: soliton_route.png')
+
+    # Export 60-frame looping animation (GIF)
+    ani = FuncAnimation(fig, animate, frames=60, interval=80, cache_frame_data=False)
+    ani.save('soliton_route.gif', writer='pillow', fps=12)
+    print('[+] Rendered soliton pulse animation: soliton_route.gif')
+    plt.close(fig)
 
 # ====================== EXAMPLE USAGE ======================
 if __name__ == "__main__":

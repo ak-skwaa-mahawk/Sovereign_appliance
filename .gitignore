@@ -67,3 +67,8 @@ storage/
 service/
 reports/
 downloads/
+
+# Visualization artifacts
+soliton_route.*
+*.gif
+*.png
