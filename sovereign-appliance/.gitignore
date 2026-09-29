@@ -13,3 +13,6 @@ workspace/notary_keys/
 smoke_test.log
 gate_dataport_reader
 __pycache__/
+audit_log.jsonl
+workspace/firecrawl_data/
+workspace/harness_approval.bin
