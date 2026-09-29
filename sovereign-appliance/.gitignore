@@ -12,3 +12,4 @@ workspace/
 workspace/notary_keys/
 smoke_test.log
 gate_dataport_reader
+__pycache__/
