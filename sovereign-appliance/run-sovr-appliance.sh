@@ -2,7 +2,7 @@
 exec qemu-system-aarch64 \
   -M virt \
   -cpu max \
-  -m 512M \
+  -m 1024M \
   -smp 2 \
   -nographic \
   -kernel ./vmlinuz-virt \
