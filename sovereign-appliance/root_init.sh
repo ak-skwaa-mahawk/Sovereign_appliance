@@ -1,38 +1,41 @@
 #!/bin/sh
-mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
-mount -t proc proc /proc 2>/dev/null || true
-mount -t sysfs sysfs /sys 2>/dev/null || true
-mount -t tmpfs tmpfs /tmp 2>/dev/null || true
+set -x
+mkdir -p /proc /sys /dev /tmp /appliance/workspace
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
 mkdir -p /dev/pts
-mount -t devpts devpts /dev/pts 2>/dev/null || true
+mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /tmp
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PYTHONUNBUFFERED=1
 
-# Check if automated smoke test requested via kernel parameters
-if grep -q "smoke" /proc/cmdline 2>/dev/null; then
-    echo "=========================================="
-    echo " Sovereign Appliance Automated Smoke Test"
-    echo "=========================================="
-    cd /appliance
-    ./test_handshake_harness.py
+echo "=========================================="
+echo " Sovereign Appliance Automated Smoke Test"
+echo "=========================================="
+
+cd /appliance
+if [ -f ./test_handshake_harness.py ]; then
+    python3 ./test_handshake_harness.py
     STATUS=$?
     if [ $STATUS -eq 0 ]; then
         if [ -x /appliance/gate_dataport_reader ]; then
-        echo "[4/4] Verifying Dataport Vector via In-Guest CAmkES Reader..."
-        /appliance/gate_dataport_reader /appliance/workspace/harness_approval.bin /appliance/workspace/notary_keys
-        if [ $? -ne 0 ]; then
-            echo "[-] In-guest CAmkES verification failed"
-            STATUS=1
+            echo "[4/4] Verifying Dataport Vector via In-Guest CAmkES Reader..."
+            /appliance/gate_dataport_reader /appliance/workspace/harness_approval.bin /appliance/workspace/notary_keys
+            if [ $? -ne 0 ]; then
+                echo "[-] In-guest CAmkES verification failed"
+                STATUS=1
+            fi
         fi
-    fi
-    echo "=== SMOKE_TEST_PASS ===" 
+        echo "=== SMOKE_TEST_PASS ==="
     else
         echo "=== SMOKE_TEST_FAIL ==="
     fi
-    poweroff -f
+else
+    echo "[-] test_handshake_harness.py not found in /appliance"
+    echo "=== SMOKE_TEST_FAIL ==="
 fi
 
-echo "=========================================="
-echo " Sovereign seL4 Appliance Shell Ready"
-echo "=========================================="
-exec /bin/sh
+poweroff -f
+reboot -f
