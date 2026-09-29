@@ -15,10 +15,10 @@ echo "=== [1/2] Launching Deterministic QEMU Smoke Runner ==="
 rm -f "$LOGFILE"
 
 # Run QEMU explicitly directing /dev/null to stdin and redirecting stdout/stderr
-timeout --preserve-status "${TIMEOUT_SECS}s" qemu-system-aarch64 \
+timeout "${TIMEOUT_SECS}s" qemu-system-aarch64 \
     -M virt \
     -cpu max \
-    -m 512M \
+    -m 1024M \
     -smp 2 \
     -nographic \
     -monitor none \
