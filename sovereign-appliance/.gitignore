@@ -16,3 +16,4 @@ __pycache__/
 audit_log.jsonl
 workspace/firecrawl_data/
 workspace/harness_approval.bin
+build/
